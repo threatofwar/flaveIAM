@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      args:
+        user: ${USER}
+        uid: ${UID}
+      context: .
+      dockerfile: ./laravel/Dockerfile
+    image: php:8.2-fpm
+    container_name: ${APP_NAME} #php-container
+    restart: on-failure
+    working_dir: /var/www/
+    volumes:
+      - ./laravel:/var/www
+      - ./.env:/var/www/.env
+    networks:
+      - network-name
+    command: bash -c "composer install && npm install && npm run build && sleep 30 && php artisan migrate && php-fpm"
+  db:
+    image: mysql:8.0
+    container_name: mysql-container
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./mysql/my.cnf:/etc/my.cnf
+      - ./mysql/init.sh:/docker-entrypoint-initdb.d/init.sh
+    networks:
+      - network-name
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-container
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./laravel:/var/www
+      - ./nginx:/etc/nginx/conf.d/
+    networks:
+      - network-name
+  # terraflask
+  terraflask:
+    build:
+      context: .
+      dockerfile: ./terraflask/Dockerfile
+    container_name: terraflask
+    ports:
+      - "${FLASK_EXPOSE_PORT}:${FLASK_EXPOSE_PORT}"
+    environment:
+      - FLASK_EXPOSE_HOST=${FLASK_EXPOSE_HOST}
+      - FLASK_EXPOSE_PORT=${FLASK_EXPOSE_PORT}
+      - TERRAFORM_DIR=/app/terraform
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    volumes:
+      - ./terraflask/flask:/app/flask
+      - ./terraflask/terraform:/app/terraform
+    networks:
+      - network-name
+    command: /bin/sh -c "cp /app/terraform/terraform.tfvars.example /app/terraform/terraform.tfvars && python3 /app/flask/app.py"
+networks:
+  network-name:
+    driver: bridge
