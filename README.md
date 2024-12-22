@@ -27,9 +27,9 @@ This project runs Laravel application, MySQL database, Nginx server, and a Flask
     AWS_SECRET_ACCESS_KEY=
     ```
 ### 3. **Build and start the containers**
-    ```bash
-    docker compose up --build
-    ```
+   ```bash
+   docker compose up --build
+   ```
 
 ### 4. **Accessing the application**
   - Open your browser and navigate to:
